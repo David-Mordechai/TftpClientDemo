@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "TftpClientDemo": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}
