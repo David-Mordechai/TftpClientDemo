@@ -27,7 +27,7 @@ void WriteFile(string file, string content)
             Console.WriteLine("Transfer running. Progress: " + progress);
         };
 
-        transfer.OnFinished += (_) =>
+        transfer.OnFinished += _ =>
         {
             Console.WriteLine("Transfer succeeded.");
             stream.Dispose();
