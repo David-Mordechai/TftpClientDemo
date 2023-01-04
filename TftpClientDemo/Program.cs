@@ -11,21 +11,35 @@ Console.WriteLine(fileContent);
 
 void WriteFile(string file, string content)
 {
-    var byteArray = Encoding.ASCII.GetBytes(content);
-    var writeStream = new MemoryStream(byteArray);
     try
     {
+        var byteArray = Encoding.ASCII.GetBytes(content);
+        using var stream = new MemoryStream(byteArray);
+
         var client = new TftpClient("tftp_server");
 
         var transfer = client.Upload(file);
-
-        transfer.OnProgress += TransferOnProgress;
-        transfer.OnFinished += TransferOnFinished;
-        transfer.OnError += TransferOnError;
-        transfer.RetryCount = 1;
+        transfer.RetryCount = 3;
         transfer.RetryTimeout = TimeSpan.FromSeconds(1);
 
-        transfer.Start(writeStream);
+        transfer.OnProgress += (transfer, progress) =>
+        {
+            Console.WriteLine("Transfer running. Progress: " + progress);
+        };
+
+        transfer.OnFinished += (transfer) =>
+        {
+            Console.WriteLine("Transfer succeeded.");;
+            autoResetEvent.Set();
+        };
+
+        transfer.OnError += (transfer, error) =>
+        {
+            Console.WriteLine("Transfer failed: " + error);
+            autoResetEvent.Set();
+        };
+       
+        transfer.Start(stream);
 
         autoResetEvent.WaitOne();
     }
@@ -34,45 +48,42 @@ void WriteFile(string file, string content)
         Console.WriteLine(e);
         throw;
     }
-
-    void TransferOnProgress(ITftpTransfer t, TftpTransferProgress progress)
-    {
-        Console.WriteLine("Transfer running. Progress: " + progress);
-    }
-
-    void TransferOnFinished(ITftpTransfer t)
-    {
-        Console.WriteLine("Transfer succeeded.");
-        writeStream.Dispose();
-        autoResetEvent.Set();
-    }
-
-    void TransferOnError(ITftpTransfer t, TftpTransferError error)
-    {
-        Console.WriteLine("Transfer failed: " + error);
-        writeStream.Dispose();
-        autoResetEvent.Set();
-    }
 }
 
 string ReadFile(string file)
 {
-    var content = string.Empty;
-    Stream readStream = new MemoryStream();
     try
     {
+        var content = string.Empty;
+        using Stream stream = new MemoryStream();
         var client = new TftpClient("tftp_server");
 
         var transfer = client.Download(file);
-
-        transfer.OnProgress += TransferOnProgress;
-        transfer.OnFinished += TransferOnFinished;
-        transfer.OnError += TransferOnError;
-        transfer.RetryCount = 1;
+        transfer.RetryCount = 3;
         transfer.RetryTimeout = TimeSpan.FromSeconds(1);
         transfer.TransferMode = TftpTransferMode.octet;
+
+        transfer.OnProgress += (transfer, progress) =>
+        {
+            Console.WriteLine("Transfer running. Progress: " + progress);
+        };
+
+        transfer.OnFinished += (transfer) =>
+        {
+            Console.WriteLine("Transfer succeeded.");
+            stream.Position = 0;
+            var reader = new StreamReader(stream);
+            content = reader.ReadToEnd();
+            autoResetEvent.Set();
+        };
+
+        transfer.OnError += (transfer, error) =>
+        {
+            Console.WriteLine("Transfer failed: " + error);
+            autoResetEvent.Set();
+        };
         
-        transfer.Start(readStream);
+        transfer.Start(stream);
         
         autoResetEvent.WaitOne();
        
@@ -82,28 +93,5 @@ string ReadFile(string file)
     {
         Console.WriteLine(e);
         throw;
-    }
-
-    void TransferOnProgress(ITftpTransfer t, TftpTransferProgress progress)
-    {
-        Console.WriteLine("Transfer running. Progress: " + progress);
-    }
-
-    void TransferOnFinished(ITftpTransfer t)
-    {
-        Console.WriteLine("Transfer succeeded.");
-        readStream.Position = 0;
-        var reader = new StreamReader(readStream);
-        var result = reader.ReadToEnd();
-        content = result;
-        readStream.Dispose();
-        autoResetEvent.Set();
-    }
-
-    void TransferOnError(ITftpTransfer t, TftpTransferError error)
-    {
-        Console.WriteLine("Transfer failed: " + error);
-        readStream.Dispose();
-        autoResetEvent.Set();
     }
 }
