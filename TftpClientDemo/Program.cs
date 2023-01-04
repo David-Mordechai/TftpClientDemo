@@ -14,7 +14,7 @@ void WriteFile(string file, string content)
     try
     {
         var byteArray = Encoding.ASCII.GetBytes(content);
-        using var stream = new MemoryStream(byteArray);
+        var stream = new MemoryStream(byteArray);
 
         var client = new TftpClient("tftp_server");
 
@@ -22,20 +22,22 @@ void WriteFile(string file, string content)
         transfer.RetryCount = 3;
         transfer.RetryTimeout = TimeSpan.FromSeconds(1);
 
-        transfer.OnProgress += (transfer, progress) =>
+        transfer.OnProgress += (_, progress) =>
         {
             Console.WriteLine("Transfer running. Progress: " + progress);
         };
 
-        transfer.OnFinished += (transfer) =>
+        transfer.OnFinished += (_) =>
         {
-            Console.WriteLine("Transfer succeeded.");;
+            Console.WriteLine("Transfer succeeded.");
+            stream.Dispose();
             autoResetEvent.Set();
         };
 
-        transfer.OnError += (transfer, error) =>
+        transfer.OnError += (_, error) =>
         {
             Console.WriteLine("Transfer failed: " + error);
+            stream.Dispose();
             autoResetEvent.Set();
         };
        
@@ -55,7 +57,7 @@ string ReadFile(string file)
     try
     {
         var content = string.Empty;
-        using Stream stream = new MemoryStream();
+        Stream stream = new MemoryStream();
         var client = new TftpClient("tftp_server");
 
         var transfer = client.Download(file);
@@ -63,21 +65,22 @@ string ReadFile(string file)
         transfer.RetryTimeout = TimeSpan.FromSeconds(1);
         transfer.TransferMode = TftpTransferMode.octet;
 
-        transfer.OnProgress += (transfer, progress) =>
+        transfer.OnProgress += (_, progress) =>
         {
             Console.WriteLine("Transfer running. Progress: " + progress);
         };
 
-        transfer.OnFinished += (transfer) =>
+        transfer.OnFinished += _ =>
         {
             Console.WriteLine("Transfer succeeded.");
             stream.Position = 0;
-            var reader = new StreamReader(stream);
+            using var reader = new StreamReader(stream);
             content = reader.ReadToEnd();
+            stream.Dispose();
             autoResetEvent.Set();
         };
 
-        transfer.OnError += (transfer, error) =>
+        transfer.OnError += (_, error) =>
         {
             Console.WriteLine("Transfer failed: " + error);
             autoResetEvent.Set();
