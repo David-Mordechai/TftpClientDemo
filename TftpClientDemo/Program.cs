@@ -1,8 +1,11 @@
 ﻿using System.Text;
 using Tftp.Net;
 
+
 AutoResetEvent autoResetEvent = new(false);
 
+const string server = "tftp_server";
+const int port = 69;
 const string fileName = "example.txt";
 
 WriteFile(fileName, "testing 2");
@@ -16,7 +19,7 @@ void WriteFile(string file, string content)
         var byteArray = Encoding.ASCII.GetBytes(content);
         var stream = new MemoryStream(byteArray);
 
-        var client = new TftpClient("tftp_server");
+        var client = new TftpClient(server, port);
 
         var transfer = client.Upload(file);
         transfer.RetryCount = 3;
@@ -58,7 +61,7 @@ string ReadFile(string file)
     {
         var content = string.Empty;
         Stream stream = new MemoryStream();
-        var client = new TftpClient("tftp_server");
+        var client = new TftpClient(server, port);
 
         var transfer = client.Download(file);
         transfer.RetryCount = 3;
@@ -83,6 +86,7 @@ string ReadFile(string file)
         transfer.OnError += (_, error) =>
         {
             Console.WriteLine("Transfer failed: " + error);
+            stream.Dispose();
             autoResetEvent.Set();
         };
         

@@ -1,11 +1,6 @@
 version: '3.4'
 
 services:
-  tftpclientdemo:
-    image: ${DOCKER_REGISTRY-}tftpclientdemo
-    build:
-      context: .
-      dockerfile: TftpClientDemo/Dockerfile
   tftp:
     image: stoxygen/tftpd-hpa:v2.0.0
     container_name: tftp_server
